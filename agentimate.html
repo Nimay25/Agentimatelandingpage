@@ -518,18 +518,23 @@
             font-weight: 800;
             color: #2d3748;
             margin-bottom: 1rem;
-            opacity: 1;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
         }
 
         .reviews-header p {
             font-size: 1.25rem;
             color: #4a5568;
-            opacity: 1;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
         }
         
-        .reviews-header.pre-animate h2,
-        .reviews-header.pre-animate p {
-            opacity: 0;
+        .reviews-header.animated h2,
+        .reviews-header.animated p {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .reviews-grid {
@@ -548,16 +553,16 @@
             border: 1px solid rgba(139, 92, 246, 0.2);
             box-shadow: 0 10px 40px rgba(139, 92, 246, 0.1);
             transition: all 0.3s;
-            opacity: 1 !important;
-            transform: translateY(0) !important;
-            will-change: opacity, transform;
-            display: block !important;
-            visibility: visible !important;
-        }
-        
-        .review-card.pre-animate {
             opacity: 0;
             transform: translateY(80px);
+            will-change: opacity, transform;
+            display: block;
+            visibility: visible;
+        }
+        
+        .review-card.animated {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .review-card:hover {
@@ -1303,22 +1308,6 @@
         const reviewsHeader = document.querySelector('.reviews-header');
         const reviewsSection = document.querySelector('.reviews-section');
         
-        // Make sure cards are visible - remove pre-animate if present
-        reviewCards.forEach(card => {
-            card.classList.remove('pre-animate');
-            // Set initial visible state
-            if (!card.classList.contains('animated')) {
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }
-        });
-        
-        if (reviewsHeader) {
-            reviewsHeader.classList.remove('pre-animate');
-            reviewsHeader.querySelector('h2').style.opacity = '1';
-            reviewsHeader.querySelector('p').style.opacity = '1';
-        }
-        
         // Function to check if element is in viewport
         function isInViewport(element) {
             const rect = element.getBoundingClientRect();
@@ -1330,21 +1319,26 @@
             );
         }
         
-        // Function to check if element is partially visible
-        function isPartiallyVisible(element) {
+        // Function to check if element is partially visible (with threshold)
+        function isPartiallyVisible(element, threshold = 0.2) {
             const rect = element.getBoundingClientRect();
+            const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+            const elementHeight = rect.height;
+            const elementTop = rect.top;
+            const elementBottom = rect.bottom;
+            
+            // Element is visible if any part of it is in the viewport
+            // and at least threshold% of it is visible
             return (
-                rect.top < window.innerHeight &&
-                rect.bottom > 0
+                elementTop < windowHeight * (1 - threshold) &&
+                elementBottom > windowHeight * threshold
             );
         }
         
         // Animate reviews header when it comes into view
         function animateHeader() {
             if (reviewsHeader && !reviewsHeader.classList.contains('animated')) {
-                // Ensure header is visible
-                reviewsHeader.querySelector('h2').style.opacity = '1';
-                reviewsHeader.querySelector('p').style.opacity = '1';
+                reviewsHeader.classList.add('animated');
                 
                 Fat.animate(reviewsHeader.querySelector('h2'), {
                     opacity: { from: 0, to: 1 },
@@ -1367,20 +1361,20 @@
         function animateReviewCard(card, index) {
             if (card.classList.contains('animated')) return;
             
-            const delay = index * 120;
+            const delay = index * 100;
             
-            // Ensure card is visible first
-            card.style.opacity = '1';
-            card.style.transform = 'translateY(0)';
+            // Mark as animated immediately to prevent duplicate animations
+            card.classList.add('animated');
             
-            // Animate from starting position
+            // Animate from starting position (fade in and slide up)
             Fat.animate(card, {
                 opacity: { from: 0, to: 1 },
                 translateY: { from: '80px', to: '0px' },
-                scale: { from: 0.9, to: 1 }
+                scale: { from: 0.95, to: 1 }
             }, {
-                duration: 1000,
-                delay: delay
+                duration: 800,
+                delay: delay,
+                easing: 'ease-out'
             });
             
             // Animate avatar with bounce
@@ -1390,8 +1384,9 @@
                     scale: { from: 0, to: 1 },
                     rotateZ: { from: '-180deg', to: '0deg' }
                 }, {
-                    duration: 700,
-                    delay: delay + 300
+                    duration: 600,
+                    delay: delay + 200,
+                    easing: 'ease-out'
                 });
             }
             
@@ -1403,8 +1398,9 @@
                     scale: { from: 0, to: 1 },
                     rotateZ: { from: '-180deg', to: '0deg' }
                 }, {
-                    duration: 500,
-                    delay: delay + 500 + (starIndex * 100)
+                    duration: 400,
+                    delay: delay + 400 + (starIndex * 80),
+                    easing: 'ease-out'
                 });
             });
             
@@ -1415,120 +1411,86 @@
                     opacity: { from: 0, to: 1 },
                     translateX: { from: '-30px', to: '0px' }
                 }, {
-                    duration: 600,
-                    delay: delay + 1000
+                    duration: 500,
+                    delay: delay + 700,
+                    easing: 'ease-out'
                 });
             }
-            
-            card.classList.add('animated');
         }
         
         // Check and animate cards on scroll
         function checkAndAnimateCards() {
+            // Animate header first if visible
+            if (reviewsHeader && !reviewsHeader.classList.contains('animated')) {
+                if (isPartiallyVisible(reviewsHeader, 0.3)) {
+                    animateHeader();
+                }
+            }
+            
+            // Animate cards when they come into view
             reviewCards.forEach((card, index) => {
-                if (isPartiallyVisible(card) && !card.classList.contains('animated')) {
+                if (isPartiallyVisible(card, 0.2) && !card.classList.contains('animated')) {
                     animateReviewCard(card, index);
                 }
             });
-            
-            // Animate header if visible
-            if (reviewsHeader && !reviewsHeader.classList.contains('animated')) {
-                if (isPartiallyVisible(reviewsHeader)) {
-                    animateHeader();
-                    reviewsHeader.classList.add('animated');
-                }
-            }
         }
         
-        // Initial check for cards already in view
+        // Initial check after page load
+        window.addEventListener('load', () => {
+            setTimeout(checkAndAnimateCards, 100);
+        });
+        
+        // Also check immediately on page load
         setTimeout(checkAndAnimateCards, 100);
         
-        // Fallback: Make cards visible after page load if they're in viewport
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                reviewCards.forEach((card, index) => {
-                    if (isPartiallyVisible(card)) {
-                        animateReviewCard(card, index);
-                    }
-                });
-                if (reviewsHeader && isPartiallyVisible(reviewsHeader)) {
-                    animateHeader();
-                    reviewsHeader.classList.add('animated');
-                }
-            }, 500);
-        });
+        // Check on scroll with throttling for performance
+        let scrollTimeout;
+        let ticking = false;
         
-        // Also check immediately if user has already scrolled
-        if (window.scrollY > 100) {
-            setTimeout(checkAndAnimateCards, 200);
+        function onScroll() {
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    checkAndAnimateCards();
+                    ticking = false;
+                });
+                ticking = true;
+            }
         }
         
-        // ULTIMATE FALLBACK: Show all cards after 2 seconds regardless
-        setTimeout(() => {
-            reviewCards.forEach((card, index) => {
-                // Force visibility
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-                if (!card.classList.contains('animated')) {
-                    animateReviewCard(card, index);
-                }
-            });
-            if (reviewsHeader) {
-                reviewsHeader.querySelector('h2').style.opacity = '1';
-                reviewsHeader.querySelector('p').style.opacity = '1';
-                if (!reviewsHeader.classList.contains('animated')) {
-                    animateHeader();
-                    reviewsHeader.classList.add('animated');
-                }
-            }
-        }, 2000);
+        window.addEventListener('scroll', onScroll, { passive: true });
         
-        // Check on scroll with FAT scroll animation
-        let scrollTimeout;
-        let lastScrollY = window.scrollY;
-        
-        window.addEventListener('scroll', () => {
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(checkAndAnimateCards, 50);
-            
-            // Parallax effect for reviews section
-            const currentScrollY = window.scrollY;
-            const scrollDiff = currentScrollY - lastScrollY;
-            
-            if (reviewsSection && isPartiallyVisible(reviewsSection)) {
-                // Subtle parallax on header
-                if (reviewsHeader) {
-                    const headerOffset = Math.min(scrollDiff * 0.3, 20);
-                    Fat.animate(reviewsHeader, {
-                        translateY: headerOffset + 'px'
-                    }, {
-                        duration: 100
-                    });
-                }
-            }
-            
-            lastScrollY = currentScrollY;
-        });
-        
-        // Also use IntersectionObserver as backup
+        // Use IntersectionObserver as primary method for better performance
         if ('IntersectionObserver' in window) {
             const observerOptions = {
-                threshold: 0.1,
-                rootMargin: '0px 0px -100px 0px'
+                threshold: 0.15,
+                rootMargin: '0px 0px -50px 0px'
             };
             
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach((entry) => {
                     if (entry.isIntersecting) {
-                        const card = entry.target;
-                        if (!card.classList.contains('animated')) {
-                            const index = Array.from(reviewCards).indexOf(card);
-                            animateReviewCard(card, index);
+                        const element = entry.target;
+                        
+                        // Handle header
+                        if (element === reviewsHeader && !reviewsHeader.classList.contains('animated')) {
+                            animateHeader();
+                        }
+                        
+                        // Handle cards
+                        if (element.classList.contains('review-card') && !element.classList.contains('animated')) {
+                            const index = Array.from(reviewCards).indexOf(element);
+                            animateReviewCard(element, index);
                         }
                     }
                 });
             }, observerOptions);
             
+            // Observe header
+            if (reviewsHeader) {
+                observer.observe(reviewsHeader);
+            }
+            
+            // Observe all cards
             reviewCards.forEach(card => {
                 observer.observe(card);
             });
